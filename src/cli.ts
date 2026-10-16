@@ -217,14 +217,22 @@ export async function runCli(argv: string[]): Promise<void> {
   program
     .command("start")
     .description("Install (if needed) and start background daemon (macOS launchd / Linux systemd / Windows Task Scheduler)")
-    .action(async () => {
+    .option("--cwd <path>", "default working directory for opencode sessions (persisted to config)")
+    .action(async (opts) => {
       if (!(await hasLarkAppConfigured())) {
         process.stdout.write(
           "⚠ 尚未完成飞书应用绑定。请先在前台运行并完成扫码:\n\n  lark-opencode-bridge run\n\n",
         );
         process.exit(1);
       }
-      await ensureServiceStarted();
+      const cfg = await loadConfig();
+      if (opts.cwd) {
+        cfg.defaultCwd = path.resolve(opts.cwd);
+        await saveConfig(cfg);
+      }
+      // The daemon spawns `opencode serve` in this directory, so it decides what
+      // a chat with no `/cd` resolves to. Fall back to where `start` was run.
+      await ensureServiceStarted({ cwd: cfg.defaultCwd ?? process.cwd() });
       const st = await getServiceStatus();
       process.stdout.write(`后台服务已启动。\n${st.detail}\n`);
       process.stdout.write(`日志: ${LOG_DIR}${path.sep}\n`);

@@ -88,7 +88,7 @@ function nodeBin(): string {
   return process.execPath;
 }
 
-function launchAgentPlist(binaries: ServiceBinaries): string {
+function launchAgentPlist(binaries: ServiceBinaries, cwd: string): string {
   const home = HOME_DIR;
   const programArgs = runProgramArgs(binaries);
   const argXml = programArgs.map((a) => `    <string>${escapeXml(a)}</string>`).join("\n");
@@ -98,6 +98,8 @@ function launchAgentPlist(binaries: ServiceBinaries): string {
 <dict>
   <key>Label</key>
   <string>${LABEL}</string>
+  <key>WorkingDirectory</key>
+  <string>${escapeXml(cwd)}</string>
   <key>ProgramArguments</key>
   <array>
 ${argXml}
@@ -126,7 +128,16 @@ ${argXml}
 `;
 }
 
-function systemdUnit(binaries: ServiceBinaries): string {
+/**
+ * The bridge talks to Feishu directly, but the Feishu SDK honours `*_proxy`; a
+ * proxy that can't tunnel HTTPS makes every call fail with
+ * "400 The plain HTTP request was sent to HTTPS port". `systemd --user` normally
+ * starts with a clean environment, but `systemctl --user import-environment`
+ * (common in WSL and desktop setups) can leak the login shell's proxies in.
+ */
+const PROXY_ENV_KEYS = "http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY";
+
+export function systemdUnit(binaries: ServiceBinaries, cwd: string): string {
   const programArgs = runProgramArgs(binaries);
   const execStart = programArgs.map(shellQuote).join(" ");
   return `[Unit]
@@ -135,10 +146,15 @@ After=network.target
 
 [Service]
 Type=simple
+# Default project directory: the bridge spawns \`opencode serve\` here, and it is
+# what a chat with no \`/cd\` resolves to. Without this, systemd --user would use
+# $HOME.
+WorkingDirectory=${cwd}
 ExecStart=${execStart}
 Restart=always
 RestartSec=5
 Environment=PATH=${servicePathEnv()}
+UnsetEnvironment=${PROXY_ENV_KEYS}
 
 [Install]
 WantedBy=default.target
@@ -155,7 +171,7 @@ WantedBy=default.target
  * files the other platforms use. The scheduled task inherits the interactive
  * user's full environment (PATH etc.), so no explicit PATH wiring is needed.
  */
-export function windowsTaskXml(binaries: ServiceBinaries): string {
+export function windowsTaskXml(binaries: ServiceBinaries, cwd: string): string {
   const programArgs = runProgramArgs(binaries);
   const outLog = path.join(LOG_DIR, "service.stdout.log");
   const errLog = path.join(LOG_DIR, "service.stderr.log");
@@ -199,6 +215,7 @@ export function windowsTaskXml(binaries: ServiceBinaries): string {
     <Exec>
       <Command>cmd.exe</Command>
       <Arguments>${escapeXml(cmdArgs)}</Arguments>
+      <WorkingDirectory>${escapeXml(cwd)}</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
@@ -210,8 +227,8 @@ function windowsTaskXmlPath(): string {
 }
 
 /** schtasks needs a UTF-16LE file with BOM for /Create /XML. */
-async function writeWindowsTaskXml(binaries: ServiceBinaries): Promise<string> {
-  const xml = windowsTaskXml(binaries);
+async function writeWindowsTaskXml(binaries: ServiceBinaries, cwd: string): Promise<string> {
+  const xml = windowsTaskXml(binaries, cwd);
   const file = windowsTaskXmlPath();
   await fs.writeFile(file, Buffer.from("﻿" + xml, "utf16le"));
   return file;
@@ -254,12 +271,12 @@ export async function ensureServiceInstalled(): Promise<void> {
 }
 
 /** Install launchd/systemd unit if missing, then start the daemon. */
-export async function ensureServiceStarted(): Promise<void> {
+export async function ensureServiceStarted(opts: { cwd?: string } = {}): Promise<void> {
   assertServicePlatform();
   // Always refresh the plist/unit so absolute binary paths stay current after
   // upgrades. installService is now idempotent — it writes the file and
   // tolerates "already loaded" from launchctl.
-  await installService();
+  await installService(opts);
   const st = await getServiceStatus();
   if (!st.running) await startService();
 }
@@ -274,8 +291,10 @@ export async function restartService(): Promise<void> {
   await startService();
 }
 
-export async function installService(): Promise<void> {
+export async function installService(opts: { cwd?: string } = {}): Promise<void> {
   assertServicePlatform();
+  // Default project directory baked into the unit/plist/task.
+  const cwd = opts.cwd ?? process.cwd();
   // The daemon redirects stdout/stderr into LOG_DIR before the bridge gets a
   // chance to create it — make sure it exists up front on every platform.
   await ensureHome();
@@ -288,7 +307,7 @@ export async function installService(): Promise<void> {
   }
 
   if (IS_WIN) {
-    const xmlPath = await writeWindowsTaskXml(binaries);
+    const xmlPath = await writeWindowsTaskXml(binaries, cwd);
     try {
       // /F overwrites an existing task so in-place upgrades refresh the command.
       run("schtasks", ["/Create", "/TN", LABEL, "/XML", xmlPath, "/F"]);
@@ -301,7 +320,7 @@ export async function installService(): Promise<void> {
   if (process.platform === "darwin") {
     const plistPath = launchAgentPath();
     await fs.mkdir(path.dirname(plistPath), { recursive: true });
-    await fs.writeFile(plistPath, launchAgentPlist(binaries), "utf8");
+    await fs.writeFile(plistPath, launchAgentPlist(binaries, cwd), "utf8");
     // Unload-then-load so an in-place upgrade picks up the refreshed plist.
     // Both ops are tolerated as "already in target state".
     runTolerant("launchctl", ["unload", plistPath], /could not find|no such/i);
@@ -312,7 +331,7 @@ export async function installService(): Promise<void> {
   if (process.platform === "linux") {
     const unitPath = systemdUnitPath();
     await fs.mkdir(path.dirname(unitPath), { recursive: true });
-    await fs.writeFile(unitPath, systemdUnit(binaries), "utf8");
+    await fs.writeFile(unitPath, systemdUnit(binaries, cwd), "utf8");
     run("systemctl", ["--user", "daemon-reload"]);
     run("systemctl", ["--user", "enable", "--now", `${LABEL}.service`]);
     log.info(`installed systemd user service: ${unitPath}`);
