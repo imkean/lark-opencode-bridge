@@ -22,6 +22,9 @@ npm i -g @imkean/lark-opencode-bridge     # GitHub Packages，首次需按 Step 
 lark-opencode-bridge run
 ```
 
+> 第一次必须在**前台**跑 `run` 完成扫码；跑通后再装成后台服务，开机自启：
+> `lark-opencode-bridge start --cwd /path/to/your/project`（见第 7 步）
+>
 > 发布在 **GitHub Packages**，不是 npmjs.com（后者是上游的构建）。想从源码安装？见 Step 3。
 
 [English](./README.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [上游仓库](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm（上游包）](https://www.npmjs.com/package/lark-opencode-bridge)
@@ -257,17 +260,33 @@ lark-opencode-bridge configure
 
 ### 第 7 步（可选）：后台常驻
 
-**确认第 6 步私聊 `/help` 正常后**，再开后台（macOS / Linux / Windows）：
+**确认第 6 步私聊 `/help` 正常后**，先 Ctrl+C 停掉前台 `run`，再开后台（macOS / Linux / Windows）：
 
 ```bash
-# 先 Ctrl+C 停掉前台 run
-lark-opencode-bridge start
+lark-opencode-bridge start --cwd /path/to/your/project
 lark-opencode-bridge status
 ```
 
-日志：`~/.lark-opencode-bridge/logs/`
+`--cwd` 是**默认项目目录**：会存成 `defaultCwd`，并成为服务的 working directory ——
+即 `opencode serve` 的启动目录，也是未用过 `/cd` 的会话默认目录。第一次请显式指定；
+不指定则用你执行 `start` 时所在的目录（不会退到 `$HOME`）。
+
+`start` 会安装**并启用**一个用户级服务，所以开机自启、崩溃自拉起：
+
+| 平台 | 服务 | 日志 |
+|---|---|---|
+| Linux | `systemd --user` → `com.lark-opencode-bridge.service` | `journalctl --user -u com.lark-opencode-bridge -f` |
+| macOS | launchd agent（`com.lark-opencode-bridge`） | `~/.lark-opencode-bridge/logs/` |
+| Windows | 计划任务（`com.lark-opencode-bridge`） | `~/.lark-opencode-bridge/logs/` |
+
+```bash
+lark-opencode-bridge stop         # 停止（保留服务定义）
+lark-opencode-bridge restart      # 改配置或升级后用
+lark-opencode-bridge unregister   # 停止并移除服务定义
+```
 
 > 后台服务必须用 **`npm i -g` 全局安装**，不要用 `npx`。
+> 之后想改 `--cwd`，重新跑一次 `start` 即可（会重写服务定义）。
 
 ### 常见问题
 
@@ -382,7 +401,7 @@ lark-opencode-bridge status
 ```
 lark-opencode-bridge              前台启动（默认 = run）
 lark-opencode-bridge run          前台启动 bot
-lark-opencode-bridge start        安装并启动后台 daemon（macOS / Linux / Windows）
+lark-opencode-bridge start [--cwd <目录>]  安装并启动后台 daemon；--cwd 指定默认项目目录
 lark-opencode-bridge stop         停止后台 daemon
 lark-opencode-bridge restart      重启后台 daemon
 lark-opencode-bridge unregister   撤销后台服务注册

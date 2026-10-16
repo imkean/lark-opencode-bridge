@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  UnsupportedApiError,
+  capabilityFor,
   mapPath,
   normalizeAgents,
   normalizeMessages,
@@ -190,5 +192,20 @@ describe("translateV2Event", () => {
   it("ignores unrelated events without throwing", () => {
     assert.deepEqual(translateV2Event({ type: "project.updated", data: {} }), []);
     assert.deepEqual(translateV2Event({ data: {} }), []);
+  });
+});
+
+describe("unsupported v2 routes", () => {
+  it("names the capability rather than the path", () => {
+    assert.equal(capabilityFor("/session/abc/share"), "session sharing");
+    assert.equal(capabilityFor("/session/abc/init"), "session initialisation");
+  });
+
+  it("reads as an availability problem, not a failure", () => {
+    // v2 really removed these, so the message must not read like a glitch.
+    assert.equal(
+      new UnsupportedApiError(capabilityFor("/session/x/share"), "v2").message,
+      "opencode 2.x does not support session sharing",
+    );
   });
 });

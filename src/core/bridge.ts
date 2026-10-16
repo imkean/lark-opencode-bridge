@@ -36,7 +36,7 @@ import {
   type PromptPart,
 } from "../opencode/client.js";
 import { OpencodeEventStream } from "../opencode/events.js";
-import { detectApiVersion, type ApiVersion } from "../opencode/v2.js";
+import { detectApiVersion, UnsupportedApiError, type ApiVersion } from "../opencode/v2.js";
 import { SessionStore } from "../session.js";
 import { WorkspaceStore, validateWorkspaceName } from "../workspace.js";
 import { parseSlash, HELP_TEXT, type SlashCommand } from "../slash.js";
@@ -946,6 +946,10 @@ export class Bridge {
           : `Session \`${sessionId}\` shared, but opencode didn't return a URL.`,
       );
     } catch (err) {
+      if (err instanceof UnsupportedApiError) {
+        await this.replyMarkdown(evt, `\`/share\` isn't available: ${err.message}.`);
+        return;
+      }
       await this.replyMarkdown(evt, `Share failed: ${(err as Error).message}`);
     }
   }
@@ -961,6 +965,10 @@ export class Bridge {
       await this.client.unshareSession(sessionId);
       await this.replyMarkdown(evt, `Session \`${sessionId}\` is no longer shared.`);
     } catch (err) {
+      if (err instanceof UnsupportedApiError) {
+        await this.replyMarkdown(evt, `\`/unshare\` isn't available: ${err.message}.`);
+        return;
+      }
       await this.replyMarkdown(evt, `Unshare failed: ${(err as Error).message}`);
     }
   }

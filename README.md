@@ -22,6 +22,10 @@ npm i -g @imkean/lark-opencode-bridge     # GitHub Packages — see Step 3 for t
 lark-opencode-bridge run
 ```
 
+> The first run must be in the **foreground** (`run`) to scan the QR code. Once it
+> works, install it as a background service so it survives reboot:
+> `lark-opencode-bridge start --cwd /path/to/your/project` ([Step 7](#step-7-optional--background-daemon))
+>
 > Published to **GitHub Packages**, not npmjs.com (that package is upstream's
 > build). Prefer to build from source? See Step 3.
 
@@ -258,17 +262,36 @@ lark-opencode-bridge configure
 
 ### Step 7 (optional) — Background daemon
 
-Only **after Step 6 works**, switch to the background (macOS / Linux / Windows):
+Only **after Step 6 works**, switch to the background (macOS / Linux / Windows).
+Stop the foreground `run` with Ctrl+C first, then:
 
 ```bash
-# Stop the foreground run with Ctrl+C first
-lark-opencode-bridge start
+lark-opencode-bridge start --cwd /path/to/your/project
 lark-opencode-bridge status
 ```
 
-Logs: `~/.lark-opencode-bridge/logs/`.
+`--cwd` is the **default project directory**: it is saved as `defaultCwd` and
+becomes the service's working directory — the directory `opencode serve` is
+spawned in, and what a chat with no `/cd` resolves to. Pass it the first time; if
+you omit it, the directory you ran `start` from is used (never `$HOME`).
+
+`start` installs **and enables** a per-user service, so it comes up on login and
+restarts after a crash:
+
+| platform | service | logs |
+|---|---|---|
+| Linux | `systemd --user` → `com.lark-opencode-bridge.service` | `journalctl --user -u com.lark-opencode-bridge -f` |
+| macOS | launchd agent (`com.lark-opencode-bridge`) | `~/.lark-opencode-bridge/logs/` |
+| Windows | Task Scheduler (`com.lark-opencode-bridge`) | `~/.lark-opencode-bridge/logs/` |
+
+```bash
+lark-opencode-bridge stop         # stop (service definition stays)
+lark-opencode-bridge restart      # after a config change or an upgrade
+lark-opencode-bridge unregister   # stop and remove the service definition
+```
 
 > Daemon mode requires a **global** install (`npm i -g`). Don't use `npx`.
+> To change `--cwd` later, run `start` again — it rewrites the service.
 
 ### Troubleshooting
 
@@ -382,7 +405,7 @@ Submitted changes write `~/.lark-opencode-bridge/config.json` immediately; **no 
 ```
 lark-opencode-bridge              Foreground (default = run)
 lark-opencode-bridge run          Run the bot in the foreground
-lark-opencode-bridge start        Install + start the background daemon (macOS / Linux / Windows)
+lark-opencode-bridge start [--cwd <dir>]  Install + start the background daemon; --cwd sets the default project dir
 lark-opencode-bridge stop         Stop the daemon
 lark-opencode-bridge restart      Restart the daemon
 lark-opencode-bridge unregister   Remove the service registration

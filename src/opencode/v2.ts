@@ -16,6 +16,27 @@ const log = createLogger("opencode.v2");
 
 export type ApiVersion = "v1" | "v2";
 
+/**
+ * Thrown for a v1 route that has no v2 equivalent, so callers can tell "this
+ * opencode version cannot do that" apart from "the call failed".
+ */
+export class UnsupportedApiError extends Error {
+  constructor(
+    readonly feature: string,
+    readonly apiVersion: ApiVersion,
+  ) {
+    super(`opencode ${apiVersion === "v2" ? "2.x" : apiVersion} does not support ${feature}`);
+    this.name = "UnsupportedApiError";
+  }
+}
+
+/** Human-readable name for a capability whose v1 route has no v2 equivalent. */
+export function capabilityFor(v1Path: string): string {
+  if (/\/share$/.test(v1Path)) return "session sharing";
+  if (/\/init$/.test(v1Path)) return "session initialisation";
+  return v1Path;
+}
+
 // ────────────────────────────────────────────────────────── request mapping
 
 /**

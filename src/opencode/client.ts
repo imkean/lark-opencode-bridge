@@ -1,5 +1,7 @@
 import { createLogger } from "../log.js";
 import {
+  UnsupportedApiError,
+  capabilityFor,
   mapPath,
   normalizeAgents,
   normalizeMessages,
@@ -165,22 +167,6 @@ export class OpencodeClient {
     );
   }
 
-  /**
-   * Initialise (or refresh) AGENTS.md for the session's cwd. Returns the
-   * messageID we asked the server to anchor against, so the caller can show
-   * progress / poll for completion.
-   */
-  async initSession(
-    sessionId: string,
-    model: ModelRef,
-    messageID: string,
-  ): Promise<void> {
-    await this.fetchJson(
-      "POST",
-      `/session/${encodeURIComponent(sessionId)}/init`,
-      { providerID: model.providerID, modelID: model.modelID, messageID },
-    );
-  }
 
   /** Create a public share link for the session; returns the URL when known. */
   async shareSession(sessionId: string): Promise<string | undefined> {
@@ -472,7 +458,9 @@ export class OpencodeClient {
     const v2 = this.opts.apiVersion === "v2";
     const wirePath = v2 ? mapPath(path, method) : path;
     if (wirePath === null) {
-      throw new Error(`opencode v2 has no equivalent for ${method} ${path}`);
+      // v2 dropped the route entirely — callers surface this as "not available
+      // on this opencode version" rather than "the call failed".
+      throw new UnsupportedApiError(capabilityFor(path), "v2");
     }
     const url = `${this.opts.baseUrl}${wirePath}`;
     const headers: Record<string, string> = { "content-type": "application/json" };

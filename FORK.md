@@ -38,6 +38,12 @@ Detection notes (both were real traps on 2.0.30, worth keeping in mind):
 `/api/session` is the reliable discriminator: 200/401/403 ⇒ v2, 404 ⇒ v1 — and v1
 is only concluded after a positive JSON response on `/session`.
 
+**Not available on v2:** `/share` and `/unshare`. opencode 2.x removed the public
+session-sharing API (`/api/pair` is device pairing, not session sharing), so the
+bridge now answers "`/share` isn't available: opencode 2.x does not support session
+sharing" instead of pasting a raw route error. `/init` is unaffected — it was
+always implemented as a prompt.
+
 v1 behaviour is unchanged when `opencodeApiVersion` is `v1` or the probe finds v1.
 
 Verified against opencode 2.0.30: provider/agent/session listing, session creation
