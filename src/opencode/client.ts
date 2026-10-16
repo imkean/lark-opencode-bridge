@@ -1,4 +1,14 @@
 import { createLogger } from "../log.js";
+import {
+  mapPath,
+  normalizeAgents,
+  normalizeMessages,
+  normalizeProviders,
+  normalizeSession,
+  normalizeSessions,
+  unwrapData,
+  type ApiVersion,
+} from "./v2.js";
 
 const log = createLogger("opencode.cli");
 
@@ -10,6 +20,10 @@ export interface ClientOptions {
   model?: string;
   /** Request timeout for prompt RPC; opencode runs can take a while. */
   requestTimeoutMs?: number;
+  /** API generation to speak. Defaults to "v1" (opencode 1.x). */
+  apiVersion?: ApiVersion;
+  /** Server password for HTTP Basic auth (required by opencode 2.x). */
+  password?: string;
 }
 
 export interface SessionInfo {
@@ -327,6 +341,21 @@ export class OpencodeClient {
     reply: "once" | "always" | "reject",
     directory?: string,
   ): Promise<void> {
+    if (this.opts.apiVersion === "v2") {
+      // v2 replies are session-scoped, so resolve the owning session first.
+      const list = (await this.fetchJson("GET", "/permission/request")) as Record<string, unknown>[];
+      const hit = (list ?? []).find(
+        (x) => x?.id === requestID || x?.requestID === requestID,
+      );
+      const sid = typeof hit?.sessionID === "string" ? hit.sessionID : undefined;
+      if (!sid) throw new Error(`permission ${requestID} not found`);
+      await this.fetchJson(
+        "POST",
+        `/session/${encodeURIComponent(sid)}/permission/${encodeURIComponent(requestID)}/reply`,
+        { decision: reply },
+      );
+      return;
+    }
     const qs = directory ? `?directory=${encodeURIComponent(directory)}` : "";
     await this.fetchJson(
       "POST",
@@ -337,6 +366,7 @@ export class OpencodeClient {
 
 
   async prompt(o: PromptOptions): Promise<PromptResult> {
+    if (this.opts.apiVersion === "v2") return this.promptV2(o, true);
     const body = this.buildPromptBody(o);
     const path = `/session/${encodeURIComponent(o.sessionId)}/message`;
     const res = await this.fetchJson("POST", path, body, o.signal);
@@ -352,9 +382,75 @@ export class OpencodeClient {
    * default 5-minute idle timeout.
    */
   async promptAsync(o: PromptOptions): Promise<void> {
+    if (this.opts.apiVersion === "v2") {
+      await this.promptV2(o, false);
+      return;
+    }
     const body = this.buildPromptBody(o);
     const path = `/session/${encodeURIComponent(o.sessionId)}/prompt_async`;
     await this.fetchJson("POST", path, body, o.signal);
+  }
+
+  /**
+   * v2 has no synchronous prompt and no `prompt_async`: everything is admitted
+   * through the same endpoint and model/agent are session-scoped, so we apply
+   * them first. When `awaitReply`, wait for the turn to finish (v2 emits a
+   * `type:"idle"` message) and return the last assistant message that has text —
+   * a turn is several assistant messages and tool-only steps carry no text.
+   */
+  private async promptV2(o: PromptOptions, awaitReply: boolean): Promise<PromptResult> {
+    const sid = encodeURIComponent(o.sessionId);
+    const agent = o.agent ?? this.opts.agent;
+    const model = parseModel(o.model ?? this.opts.model);
+    if (model) {
+      await this.fetchJson("POST", `/session/${sid}/model`, {
+        model: { id: model.modelID, providerID: model.providerID },
+      });
+    }
+    if (agent) await this.fetchJson("POST", `/session/${sid}/agent`, { agent });
+
+    const watermark = await this.messageWatermark(o.sessionId);
+    await this.fetchJson("POST", `/session/${sid}/message`, { parts: o.parts }, o.signal);
+    if (!awaitReply) return { text: "", raw: undefined };
+
+    const deadline = Date.now() + (this.opts.requestTimeoutMs ?? 20 * 60_000);
+    let last: { info: { role?: string; time?: { created?: number } }; parts: unknown[] } | undefined;
+    let sawActive = false;
+    while (Date.now() < deadline) {
+      await sleep(700);
+      const msgs = (await this.fetchJson("GET", `/session/${sid}/message`)) as typeof last[];
+      const fresh = (msgs ?? []).filter((m) => (m?.info?.time?.created ?? 0) > watermark);
+      const withText = fresh.filter((m) => extractText(m).trim());
+      if (withText.length) last = withText[withText.length - 1];
+      if (fresh.some((m) => m?.info?.role === "idle")) break;
+
+      // If the run leaves the active set without an idle marker it was aborted
+      // or failed — stop waiting instead of blocking for the full timeout.
+      let active = false;
+      try {
+        const a = (await this.fetchJson("GET", "/session-status")) as Record<string, unknown>;
+        active = Boolean(a?.[o.sessionId]);
+      } catch {
+        /* keep polling */
+      }
+      if (active) sawActive = true;
+      else if (sawActive) {
+        log.warn(`run for ${o.sessionId} left the active set without idle — returning partial`);
+        break;
+      }
+    }
+    return { text: last ? extractText(last) : "", raw: last };
+  }
+
+  /** Highest `time.created` currently visible for a session (v2 turn watermark). */
+  private async messageWatermark(sessionId: string): Promise<number> {
+    const msgs = (await this.fetchJson(
+      "GET",
+      `/session/${encodeURIComponent(sessionId)}/message`,
+    )) as { info?: { time?: { created?: number } } }[];
+    let max = 0;
+    for (const m of msgs ?? []) max = Math.max(max, m?.info?.time?.created ?? 0);
+    return max;
   }
 
   private buildPromptBody(o: PromptOptions): Record<string, unknown> {
@@ -373,17 +469,26 @@ export class OpencodeClient {
     body?: unknown,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    const url = `${this.opts.baseUrl}${path}`;
+    const v2 = this.opts.apiVersion === "v2";
+    const wirePath = v2 ? mapPath(path, method) : path;
+    if (wirePath === null) {
+      throw new Error(`opencode v2 has no equivalent for ${method} ${path}`);
+    }
+    const url = `${this.opts.baseUrl}${wirePath}`;
     const headers: Record<string, string> = { "content-type": "application/json" };
+    if (v2 && this.opts.password) {
+      headers.authorization =
+        "Basic " + Buffer.from(`opencode:${this.opts.password}`).toString("base64");
+    }
     const init: RequestInit = { method, headers };
-    if (body !== undefined) init.body = JSON.stringify(body);
+    if (body !== undefined) init.body = JSON.stringify(v2 ? adaptBody(path, method, body) : body);
     if (signal) {
       init.signal = signal;
     } else if (this.opts.requestTimeoutMs) {
       init.signal = AbortSignal.timeout(this.opts.requestTimeoutMs);
     }
 
-    log.debug(`${method} ${path}`);
+    log.debug(`${method} ${path}${v2 ? ` → ${wirePath}` : ""}`);
     const res = await fetch(url, init);
     const text = await res.text();
     if (!res.ok) {
@@ -395,12 +500,52 @@ export class OpencodeClient {
       );
     }
     if (!text.trim()) return {};
+    let json: unknown;
     try {
-      return JSON.parse(text);
+      json = JSON.parse(text);
     } catch {
       return { _rawText: text };
     }
+    return v2 ? normalizeResponse(path, method, json) : json;
   }
+}
+
+/** v2 request bodies: v1 `{ parts }` → `{ text }`; `?directory=` → `body.location`. */
+function adaptBody(v1Path: string, method: string, body: unknown): unknown {
+  const [pathOnly, query] = v1Path.split("?") as [string, string?];
+  const b = (body ?? {}) as Record<string, unknown>;
+  if (method === "POST" && pathOnly === "/session") {
+    const out: Record<string, unknown> = { ...b };
+    const dir = query ? new URLSearchParams(query).get("directory") : null;
+    if (dir && !out.location) out.location = { directory: dir };
+    return out;
+  }
+  if (method === "POST" && /\/message$/.test(pathOnly) && Array.isArray(b.parts)) {
+    // v2 takes flat text; model/agent are applied via their own endpoints.
+    return { text: promptPartsToText(b.parts as Record<string, unknown>[]) };
+  }
+  if (method === "POST" && /\/revert$/.test(pathOnly)) return { messageID: b.messageID };
+  return body;
+}
+
+function promptPartsToText(parts: Record<string, unknown>[]): string {
+  return parts
+    .filter((p) => p && p.type === "text" && typeof p.text === "string")
+    .map((p) => p.text as string)
+    .join("\n");
+}
+
+/** Map a v2 response back onto the v1 shape the callers expect. */
+function normalizeResponse(v1Path: string, method: string, json: unknown): unknown {
+  const [pathOnly] = v1Path.split("?") as [string, string?];
+  if (method === "GET" && pathOnly === "/session") return normalizeSessions(json);
+  if (method === "POST" && pathOnly === "/session") return normalizeSession(json);
+  if (method === "GET" && pathOnly === "/agent") return normalizeAgents(json);
+  if (method === "GET" && pathOnly === "/config/providers") return normalizeProviders(json);
+  if (method === "GET" && /^\/session\/[^/]+\/message$/.test(pathOnly)) {
+    return normalizeMessages(json);
+  }
+  return unwrapData(json);
 }
 
 /**
@@ -464,4 +609,8 @@ function extractText(res: unknown): string {
     }
   }
   return buckets.join("").trim();
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

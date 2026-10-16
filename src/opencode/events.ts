@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { createLogger } from "../log.js";
+import { translateV2Event, type ApiVersion } from "./v2.js";
 
 const log = createLogger("opencode.evt");
 
@@ -46,6 +47,10 @@ export interface SubscribeOptions {
   sessionID?: string;
   /** Forward all events unfiltered (overrides sessionID filter). */
   noFilter?: boolean;
+  /** API generation to speak. Defaults to "v1" (opencode 1.x). */
+  apiVersion?: ApiVersion;
+  /** Server password for HTTP Basic auth (required by opencode 2.x). */
+  password?: string;
 }
 
 /**
@@ -62,10 +67,16 @@ export class OpencodeEventStream extends EventEmitter {
   }
 
   async start(): Promise<void> {
-    const url = `${this.opts.baseUrl}/event`;
+    const v2 = this.opts.apiVersion === "v2";
+    const url = `${this.opts.baseUrl}${v2 ? "/api/event" : "/event"}`;
+    const headers: Record<string, string> = { accept: "text/event-stream" };
+    if (v2 && this.opts.password) {
+      headers.authorization =
+        "Basic " + Buffer.from(`opencode:${this.opts.password}`).toString("base64");
+    }
     log.debug(`SSE → ${url} (session=${this.opts.sessionID ?? "*"})`);
     const res = await fetch(url, {
-      headers: { accept: "text/event-stream" },
+      headers,
       signal: this.controller.signal,
     });
     if (!res.ok || !res.body) {
@@ -126,6 +137,19 @@ export class OpencodeEventStream extends EventEmitter {
       log.debug(`non-JSON SSE: ${dataLine.slice(0, 100)}`);
       return;
     }
+    // v2 speaks a different event taxonomy; translate to the v1 envelopes the
+    // rest of the pipeline (and normalize()) already understands. One v2 event
+    // can expand into several envelopes (e.g. failure → error + idle).
+    const envelopes: RawOpencodeEvent[] =
+      this.opts.apiVersion === "v2"
+        ? (translateV2Event(envelope as unknown as Record<string, unknown>) as RawOpencodeEvent[])
+        : [envelope];
+    for (const env of envelopes) {
+      this.handleEnvelope(env);
+    }
+  }
+
+  private handleEnvelope(envelope: RawOpencodeEvent): void {
     this.emit("raw", envelope);
     const norm = normalize(envelope);
     if (!norm) return;

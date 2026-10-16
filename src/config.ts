@@ -35,6 +35,12 @@ export interface BridgeConfig {
   idleTimeoutMinutes: number;
   /** Batch rapid messages in the same chat before sending one prompt (ms). */
   messageBatchMs: number;
+  /**
+   * opencode API generation. "auto" probes the server (opencode 2.x serves
+   * under `/api` and needs Basic auth). Defaults to "v1" for safety when the
+   * server cannot be reached at startup.
+   */
+  opencodeApiVersion: "auto" | "v1" | "v2";
 }
 
 const DEFAULT: BridgeConfig = {
@@ -50,6 +56,7 @@ const DEFAULT: BridgeConfig = {
   handleDocComments: true,
   idleTimeoutMinutes: 30,
   messageBatchMs: 600,
+  opencodeApiVersion: "auto",
 };
 
 export async function loadConfig(): Promise<BridgeConfig> {

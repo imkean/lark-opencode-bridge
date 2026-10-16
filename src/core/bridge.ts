@@ -36,6 +36,7 @@ import {
   type PromptPart,
 } from "../opencode/client.js";
 import { OpencodeEventStream } from "../opencode/events.js";
+import { detectApiVersion, type ApiVersion } from "../opencode/v2.js";
 import { SessionStore } from "../session.js";
 import { WorkspaceStore, validateWorkspaceName } from "../workspace.js";
 import { parseSlash, HELP_TEXT, type SlashCommand } from "../slash.js";
@@ -94,7 +95,9 @@ export class Bridge {
   private readonly attach: LarkAttachmentFetcher;
   private readonly comments: CommentFetcher;
   private readonly server: OpencodeServer | null;
-  private readonly client: OpencodeClient;
+  private client: OpencodeClient;
+  private apiVersion: ApiVersion = "v1";
+  private opencodePassword: string | null = null;
   private readonly sessions = new SessionStore();
   private readonly workspaces = new WorkspaceStore();
   private readonly perChat = new Map<string, PerChatRuntime>();
@@ -135,6 +138,7 @@ export class Bridge {
       agent: config.agent,
       model: config.model,
       requestTimeoutMs: 10 * 60_000,
+      apiVersion: this.apiVersion,
     });
   }
 
@@ -144,6 +148,26 @@ export class Bridge {
     await this.sessions.load();
     await this.workspaces.load();
     if (this.server) await this.server.start();
+
+    // opencode 2.x requires Basic auth and serves a different API generation.
+    // Detect it (unless pinned) and rebuild the client accordingly.
+    const { config } = this.opts;
+    const configured = config.opencodeApiVersion ?? "auto";
+    this.opencodePassword = this.server?.password ?? process.env.OPENCODE_PASSWORD ?? null;
+    const baseUrl = `http://${config.opencodeHost}:${config.opencodePort}`;
+    this.apiVersion =
+      configured === "auto" ? await detectApiVersion(baseUrl, this.opencodePassword) : configured;
+    log.info(
+      `opencode API: ${this.apiVersion}${this.opencodePassword ? " (password auth)" : ""}`,
+    );
+    this.client = new OpencodeClient({
+      baseUrl,
+      agent: config.agent,
+      model: config.model,
+      requestTimeoutMs: 10 * 60_000,
+      apiVersion: this.apiVersion,
+      password: this.opencodePassword ?? undefined,
+    });
 
     this.credentials = await loadActiveLarkCredentials({
       profileOrAppId: this.opts.config.larkProfile,
@@ -1371,6 +1395,8 @@ export class Bridge {
     const stream = new OpencodeEventStream({
       baseUrl: `http://${this.opts.config.opencodeHost}:${this.opts.config.opencodePort}`,
       sessionID: sessionId,
+      apiVersion: this.apiVersion,
+      password: this.opencodePassword ?? undefined,
     });
 
     const answeredPermissions = new Set<string>();

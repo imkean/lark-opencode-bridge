@@ -29,11 +29,18 @@ export class OpencodeServer {
   private reused = false;
   /** Timestamps of recent unexpected exits, for crash-loop detection. */
   private crashes: number[] = [];
+  /** Password `opencode serve` prints on stdout; needed for v2 Basic auth. */
+  private serverPassword: string | null = null;
 
   constructor(private readonly opts: ServeOptions) {}
 
   get baseUrl(): string {
     return `http://${this.opts.host}:${this.opts.port}`;
+  }
+
+  /** Server password captured from the child's stdout (v2 auth). */
+  get password(): string | null {
+    return this.serverPassword;
   }
 
   async start(): Promise<void> {
@@ -56,7 +63,20 @@ export class OpencodeServer {
     const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
     this.proc = proc;
 
-    proc.stdout.on("data", (c: Buffer) => log.debug(c.toString("utf8").trim()));
+    // `opencode serve` prints "server password <pw>" on startup; opencode 2.x
+    // requires it as HTTP Basic auth, so keep it (the line may be split across
+    // chunks, and the password must never reach the log).
+    let boot = "";
+    proc.stdout.on("data", (c: Buffer) => {
+      const text = c.toString("utf8");
+      boot += text;
+      const m = boot.match(/server password (\S+)/);
+      if (m && !this.serverPassword) {
+        this.serverPassword = m[1]!;
+        log.debug(`captured opencode server password`);
+      }
+      log.debug(text.replace(/server password \S+/, "server password <redacted>").trim());
+    });
     proc.stderr.on("data", (c: Buffer) => log.warn(c.toString("utf8").trim()));
     proc.on("exit", (code, signal) => {
       log.warn(`opencode serve exited (code=${code}, signal=${signal})`);
