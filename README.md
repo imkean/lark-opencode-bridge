@@ -18,9 +18,13 @@
 > No model in the cloud, no code uploaded, no new account to sign up for — your code and execution stay 100% local.
 
 ```bash
-npm i -g github:imkean/lark-opencode-bridge
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link     # build this fork, put it on $PATH
 lark-opencode-bridge run
 ```
+
+> Not published to npm (the upstream package is a different build) — install from
+> source as above.
 
 [中文](./README.zh.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [Upstream](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm (upstream package)](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -186,8 +190,9 @@ lark-cli --version
 ### Step 3 — Install the bridge
 
 ```bash
-npm install -g github:imkean/lark-opencode-bridge
-lark-opencode-bridge --version
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link
+lark-opencode-bridge --version   # → 0.1.19-fork.N
 lark-opencode-bridge doctor
 ```
 

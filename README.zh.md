@@ -18,9 +18,13 @@
 > 云端不跑模型、不托管你的代码、不要你再注册任何账号——代码和执行始终在你本机。
 
 ```bash
-npm i -g github:imkean/lark-opencode-bridge
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link     # build this fork, put it on $PATH
 lark-opencode-bridge run
 ```
+
+> Not published to npm (the upstream package is a different build) — install from
+> source as above.
 
 [English](./README.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [上游仓库](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm（上游包）](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -186,8 +190,9 @@ lark-cli --version
 ### 第 3 步：安装 lark-opencode-bridge
 
 ```bash
-npm install -g github:imkean/lark-opencode-bridge
-lark-opencode-bridge --version
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link
+lark-opencode-bridge --version   # → 0.1.19-fork.N
 lark-opencode-bridge doctor
 ```
 

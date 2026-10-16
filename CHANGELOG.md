@@ -18,8 +18,8 @@ This project follows [Semantic Versioning](https://semver.org/).
   server generation and translates at the request/response and SSE edges, leaving
   internals on the v1 shape. The server password `opencode serve` prints on stdout
   is captured for Basic auth (and redacted from the log).
-- `prepare` script, so the fork can be installed straight from git:
-  `npm i -g github:imkean/lark-opencode-bridge`.
+- Fork version `0.1.19-fork.1`, so `lark-opencode-bridge --version` distinguishes
+  this build from upstream's `0.1.18`.
 
 ### Fixed
 - **`config.larkProfile` now applies to every lark-cli call**, not just the
