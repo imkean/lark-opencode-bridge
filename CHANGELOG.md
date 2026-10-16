@@ -3,6 +3,35 @@
 All notable changes to **lark-opencode-bridge** are documented here.
 This project follows [Semantic Versioning](https://semver.org/).
 
+> **This is a fork.** Entries below `## [0.1.19-fork.1]` are upstream's history,
+> kept verbatim. Fork-only changes are listed first and also summarised in
+> [FORK.md](./FORK.md).
+
+## [0.1.19-fork.1]
+
+### Added
+- **opencode 2.x support** — `opencodeApiVersion: "auto" | "v1" | "v2"`
+  (default `auto`). opencode 2.x moved every endpoint under `/api`, requires HTTP
+  Basic auth, renamed routes, wraps responses in `{ data }`, changed the prompt
+  body and replaced the event taxonomy; previously every prompt failed with
+  `POST /session failed: 405 Method Not Allowed`. The bridge now detects the
+  server generation and translates at the request/response and SSE edges, leaving
+  internals on the v1 shape. The server password `opencode serve` prints on stdout
+  is captured for Basic auth (and redacted from the log).
+- `prepare` script, so the fork can be installed straight from git:
+  `npm i -g github:imkean/lark-opencode-bridge`.
+
+### Fixed
+- **`config.larkProfile` now applies to every lark-cli call**, not just the
+  WebSocket credentials. `runPreflight()`/`doctor` validated the *active* profile
+  instead of the configured one (so a machine whose default profile was a
+  different app failed preflight with `飞书应用未配置`), and the sender / chats /
+  attachment / bot-info calls ran as whatever profile was active.
+
+### Changed
+- README: marked as a fork, removed the upstream community block (join link, QR,
+  knowledge base) and the upstream CI badge, and documented the fork install path.
+
 ## [0.1.18] - 2026-08-12
 
 ### Changed

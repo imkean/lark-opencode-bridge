@@ -13,19 +13,16 @@
 > 细节见 [FORK.md](./FORK.md)；正式发布的包见
 > [`npmjs.com/package/lark-opencode-bridge`](https://www.npmjs.com/package/lark-opencode-bridge)。与原作者的仓库无隶属关系。
 
-[![CI](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/lark-opencode-bridge.svg)](https://www.npmjs.com/package/lark-opencode-bridge)
-
 > 🌉 **一句话：** 把你本地已经在用的 [opencode](https://opencode.ai) 编程 agent 接进飞书。手机也能驱动、能拉群协作、会话能留存、飞书文档与附件原生打通。
 >
 > 云端不跑模型、不托管你的代码、不要你再注册任何账号——代码和执行始终在你本机。
 
 ```bash
-npm i -g lark-opencode-bridge@latest
+npm i -g github:imkean/lark-opencode-bridge
 lark-opencode-bridge run
 ```
 
-[English](./README.md) · [GitHub](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm](https://www.npmjs.com/package/lark-opencode-bridge)
+[English](./README.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [上游仓库](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm（上游包）](https://www.npmjs.com/package/lark-opencode-bridge)
 
 ---
 
@@ -189,7 +186,7 @@ lark-cli --version
 ### 第 3 步：安装 lark-opencode-bridge
 
 ```bash
-npm install -g lark-opencode-bridge@latest
+npm install -g github:imkean/lark-opencode-bridge
 lark-opencode-bridge --version
 lark-opencode-bridge doctor
 ```
