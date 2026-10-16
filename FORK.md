@@ -72,6 +72,26 @@ with the machine's default lark-cli profile set to a *different* app, the bridge
 logs the correct `bot open_id` for `larkProfile` and starts without
 `--skip-preflight`.
 
+## Distribution
+
+Published to **GitHub Packages** (`npm.pkg.github.com`), not npmjs.com — that
+package is upstream's build, and this fork cannot publish to that name anyway.
+
+- `.github/workflows/publish.yml` publishes on a published release or manually
+  (`workflow_dispatch`), authenticating with the workflow's own `GITHUB_TOKEN`
+  (`packages: write`) — no long-lived token stored anywhere.
+- `name` is `@imkean/lark-opencode-bridge`; GitHub Packages requires the scope to
+  match the repository owner.
+- Consuming installs need an authenticated read, so `~/.npmrc` gets a scoped
+  registry plus a token with `read:packages`:
+
+  ```
+  @imkean:registry=https://npm.pkg.github.com
+  //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+  ```
+
+Building from source (below) needs none of that.
+
 ## Working with this fork
 
 ```bash

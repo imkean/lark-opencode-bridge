@@ -1,0 +1,35 @@
+name: Publish to GitHub Packages
+
+# Publishes to GitHub's npm registry (npm.pkg.github.com) using the workflow's
+# own GITHUB_TOKEN — no npmjs.com account, no long-lived token to manage.
+#
+# Requires Actions to be enabled for this repository (forks have them off by
+# default): Actions tab → "I understand my workflows, go ahead and enable them".
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: https://npm.pkg.github.com
+          scope: "@imkean"
+
+      - run: npm ci
+
+      # prepublishOnly runs the typecheck, test suite and build, so a red test
+      # suite blocks the publish.
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

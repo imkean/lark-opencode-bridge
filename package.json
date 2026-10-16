@@ -1,16 +1,16 @@
 {
-  "name": "lark-opencode-bridge",
+  "name": "@imkean/lark-opencode-bridge",
   "version": "0.1.19-fork.1",
   "description": "Feishu/Lark bot for local opencode — QR setup, streaming cards, /spawn groups, doc comments & attachments",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/YMaxwellHayes/lark-opencode-bridge.git"
+    "url": "git+https://github.com/imkean/lark-opencode-bridge.git"
   },
   "bugs": {
-    "url": "https://github.com/YMaxwellHayes/lark-opencode-bridge/issues"
+    "url": "https://github.com/imkean/lark-opencode-bridge/issues"
   },
-  "homepage": "https://github.com/YMaxwellHayes/lark-opencode-bridge#readme",
+  "homepage": "https://github.com/imkean/lark-opencode-bridge#readme",
   "bin": {
     "lark-opencode-bridge": "bin/lark-opencode-bridge.mjs",
     "opencode-bridge": "bin/lark-opencode-bridge.mjs"
@@ -72,7 +72,6 @@
   ],
   "license": "MIT",
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.org/"
+    "registry": "https://npm.pkg.github.com"
   }
 }

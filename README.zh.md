@@ -18,13 +18,11 @@
 > 云端不跑模型、不托管你的代码、不要你再注册任何账号——代码和执行始终在你本机。
 
 ```bash
-git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
-npm install && npm run build && npm link     # build this fork, put it on $PATH
+npm i -g @imkean/lark-opencode-bridge     # GitHub Packages，首次需按 Step 3 配置鉴权
 lark-opencode-bridge run
 ```
 
-> Not published to npm (the upstream package is a different build) — install from
-> source as above.
+> 发布在 **GitHub Packages**，不是 npmjs.com（后者是上游的构建）。想从源码安装？见 Step 3。
 
 [English](./README.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [上游仓库](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm（上游包）](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -189,12 +187,27 @@ lark-cli --version
 
 ### 第 3 步：安装 lark-opencode-bridge
 
+发布在 GitHub 的 npm registry。它**读取也需要鉴权**，所以先配置一次 scoped registry 和一个带
+`read:packages` 的 token：
+
 ```bash
-git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
-npm install && npm run build && npm link
+gh auth refresh -s read:packages            # 给 gh 的 token 加上该 scope
+echo "@imkean:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "//npm.pkg.github.com/:_authToken=$(gh auth token)" >> ~/.npmrc
+
+npm i -g @imkean/lark-opencode-bridge
 lark-opencode-bridge --version   # → 0.1.19-fork.N
 lark-opencode-bridge doctor
 ```
+
+<details>
+<summary>想改成从源码安装？</summary>
+
+```bash
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link
+```
+</details>
 
 `doctor` 里 `lark-cli`、`opencode` 都应是 **ok**。
 

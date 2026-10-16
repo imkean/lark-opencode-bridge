@@ -18,13 +18,12 @@
 > No model in the cloud, no code uploaded, no new account to sign up for — your code and execution stay 100% local.
 
 ```bash
-git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
-npm install && npm run build && npm link     # build this fork, put it on $PATH
+npm i -g @imkean/lark-opencode-bridge     # GitHub Packages — see Step 3 for the one-time auth
 lark-opencode-bridge run
 ```
 
-> Not published to npm (the upstream package is a different build) — install from
-> source as above.
+> Published to **GitHub Packages**, not npmjs.com (that package is upstream's
+> build). Prefer to build from source? See Step 3.
 
 [中文](./README.zh.md) · [GitHub](https://github.com/imkean/lark-opencode-bridge) · [Upstream](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm (upstream package)](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -189,12 +188,27 @@ lark-cli --version
 
 ### Step 3 — Install the bridge
 
+Published to GitHub's npm registry. It requires an **authenticated read**, so set
+up a scoped registry and a token with `read:packages` once:
+
 ```bash
-git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
-npm install && npm run build && npm link
+gh auth refresh -s read:packages            # add the scope to gh's token
+echo "@imkean:registry=https://npm.pkg.github.com" >> ~/.npmrc
+echo "//npm.pkg.github.com/:_authToken=$(gh auth token)" >> ~/.npmrc
+
+npm i -g @imkean/lark-opencode-bridge
 lark-opencode-bridge --version   # → 0.1.19-fork.N
 lark-opencode-bridge doctor
 ```
+
+<details>
+<summary>Prefer to build from source instead?</summary>
+
+```bash
+git clone https://github.com/imkean/lark-opencode-bridge && cd lark-opencode-bridge
+npm install && npm run build && npm link
+```
+</details>
 
 Both `lark-cli` and `opencode` should report **ok**.
 
