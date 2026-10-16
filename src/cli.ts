@@ -219,13 +219,15 @@ export async function runCli(argv: string[]): Promise<void> {
     .description("Install (if needed) and start background daemon (macOS launchd / Linux systemd / Windows Task Scheduler)")
     .option("--cwd <path>", "default working directory for opencode sessions (persisted to config)")
     .action(async (opts) => {
-      if (!(await hasLarkAppConfigured())) {
+      // Check the profile the bridge is actually configured to use, not the
+      // machine's active lark-cli profile — they can be different apps.
+      const cfg = await loadConfig();
+      if (!(await hasLarkAppConfigured(cfg.larkProfile))) {
         process.stdout.write(
           "⚠ 尚未完成飞书应用绑定。请先在前台运行并完成扫码:\n\n  lark-opencode-bridge run\n\n",
         );
         process.exit(1);
       }
-      const cfg = await loadConfig();
       if (opts.cwd) {
         cfg.defaultCwd = path.resolve(opts.cwd);
         await saveConfig(cfg);
