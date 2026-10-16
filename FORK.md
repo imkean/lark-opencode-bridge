@@ -8,6 +8,43 @@ possible upstream pull request.
 
 ## Divergence from upstream
 
+### `Support opencode 2.x (API version auto-detection)`
+
+Upstream only speaks opencode's v1 API, so opencode 2.x fails immediately with
+`POST /session failed: 405 Method Not Allowed` (2.x moved every endpoint under
+`/api`, requires HTTP Basic auth, renamed routes, wraps responses in `{ data }`,
+changed the prompt body and replaced the event taxonomy).
+
+This fork translates at the two edges and leaves the internals on the v1 shape:
+
+- `src/opencode/v2.ts` (new) — path mapping (method-aware: v2 splits prompting
+  from reading messages), response unwrapping/reshaping, and `translateV2Event()`
+  mapping the v2 event taxonomy back onto the v1 envelopes `normalize()` expects.
+  Also `detectApiVersion()`.
+- `src/opencode/client.ts` — `apiVersion`/`password` options; `fetchJson` rewrites
+  paths, adds Basic auth and normalises responses. v2 has no synchronous prompt,
+  so `prompt()` applies model/agent via their own endpoints, admits the prompt,
+  then waits for the turn's `type:"idle"` marker and returns the last assistant
+  message carrying text. `replyPermission` resolves the owning session first.
+- `src/opencode/events.ts` — same options; translates v2 events before normalising
+  and before the session filter.
+- `src/opencode/server.ts` — captures the `server password` line `opencode serve`
+  prints on stdout (needed for Basic auth; redacted from the log).
+- `src/config.ts` — `opencodeApiVersion: "auto" | "v1" | "v2"` (default `auto`).
+
+Detection notes (both were real traps on 2.0.30, worth keeping in mind):
+`/api/health` does **not** exist there — it 404s once authenticated — and root
+`/session` answers 200 on v2 as well because `opencode serve` also hosts a web UI.
+`/api/session` is the reliable discriminator: 200/401/403 ⇒ v2, 404 ⇒ v1 — and v1
+is only concluded after a positive JSON response on `/session`.
+
+v1 behaviour is unchanged when `opencodeApiVersion` is `v1` or the probe finds v1.
+
+Verified against opencode 2.0.30: provider/agent/session listing, session creation
+in an explicit directory, the SSE stream feeding the streaming card
+(`part:reasoning`, `part:text`, `part:tool`, `busy`→`idle`), the synchronous prompt
+path, history and delete. 41 unit tests.
+
 ### `Honour larkProfile for all lark-cli calls, and in preflight`
 
 `config.larkProfile` only reached `loadActiveLarkCredentials()`, so it pinned the
