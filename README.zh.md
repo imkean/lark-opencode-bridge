@@ -1,5 +1,18 @@
 # lark-opencode-bridge
 
+> ## 🍴 这是 fork 版本
+>
+> fork 自 [YMaxwellHayes/lark-opencode-bridge](https://github.com/YMaxwellHayes/lark-opencode-bridge)，为本地使用而维护。
+> 跟随上游更新，额外包含：
+>
+> | 改动 | 原因 |
+> |---|---|
+> | **支持 opencode 2.x**（`opencodeApiVersion`，默认 `auto`） | 上游只会讲 opencode v1 API，2.x 下直接报 `POST /session failed: 405 Method Not Allowed` |
+> | **`larkProfile` 全链路生效** | 之前只作用于 WebSocket，回复/建群/附件下载会按当前激活 profile 执行 |
+>
+> 细节见 [FORK.md](./FORK.md)；正式发布的包见
+> [`npmjs.com/package/lark-opencode-bridge`](https://www.npmjs.com/package/lark-opencode-bridge)。与原作者的仓库无隶属关系。
+
 [![CI](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/lark-opencode-bridge.svg)](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -13,15 +26,6 @@ lark-opencode-bridge run
 ```
 
 [English](./README.md) · [GitHub](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm](https://www.npmjs.com/package/lark-opencode-bridge)
-
----
-
-## 💬 分享与交流
-
-- 📖 更多帮助与指南文档，请查看 [飞书知识库 →](https://liulishuo.feishu.cn/wiki/ZahKwFsJQiGnYVkHw76crxVPnUL)
-- 👥 加入交流群：[点此一键加入 →](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b84ie8d0-326b-490f-9a14-86b9acd3d7a5)，或扫描下方群二维码（永久有效）
-
-<img src="./docs/img/feishu-group-qr.png" alt="lark-opencode-bridge 交流群" width="240" />
 
 ---
 

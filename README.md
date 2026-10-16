@@ -1,5 +1,18 @@
 # lark-opencode-bridge
 
+> ## 🍴 This is a fork
+>
+> Forked from [YMaxwellHayes/lark-opencode-bridge](https://github.com/YMaxwellHayes/lark-opencode-bridge)
+> and maintained for local use. It tracks upstream, with these additions:
+>
+> | change | why |
+> |---|---|
+> | **opencode 2.x support** (`opencodeApiVersion`, default `auto`) | upstream only speaks opencode's v1 API, so 2.x fails with `POST /session failed: 405 Method Not Allowed` |
+> | **`larkProfile` applied everywhere** | it previously only pinned the WebSocket app, so replies and chat/attachment calls ran as whatever profile was active |
+>
+> See [FORK.md](./FORK.md) for details, and [`npmjs.com/package/lark-opencode-bridge`](https://www.npmjs.com/package/lark-opencode-bridge)
+> for the published package. Not affiliated with the original author.
+
 [![CI](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/YMaxwellHayes/lark-opencode-bridge/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/lark-opencode-bridge.svg)](https://www.npmjs.com/package/lark-opencode-bridge)
 
@@ -13,15 +26,6 @@ lark-opencode-bridge run
 ```
 
 [中文](./README.zh.md) · [GitHub](https://github.com/YMaxwellHayes/lark-opencode-bridge) · [npm](https://www.npmjs.com/package/lark-opencode-bridge)
-
----
-
-## 💬 Community & support
-
-- 📖 More guides & help docs: [Feishu knowledge base →](https://liulishuo.feishu.cn/wiki/ZahKwFsJQiGnYVkHw76crxVPnUL)
-- 👥 Join the chat group: [one-click join →](https://applink.feishu.cn/client/chat/chatter/add_by_link?link_token=b84ie8d0-326b-490f-9a14-86b9acd3d7a5), or scan the QR code below (永久有效 / never expires)
-
-<img src="./docs/img/feishu-group-qr.png" alt="lark-opencode-bridge chat group" width="240" />
 
 ---
 
