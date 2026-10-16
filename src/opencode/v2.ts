@@ -299,7 +299,9 @@ export function translateV2Event(ev: Record<string, unknown>): Envelope[] {
         ];
       }
       if (t !== "project.updated" && t !== "session.usage.updated") {
-        log.debug(`untranslated v2 event: ${t}`);
+        // Most v2 chatter (capability/UI notifications) is simply irrelevant to
+        // the bridge; logging it drowns the useful lines.
+        if (!BENIGN_V2_EVENTS.has(t)) log.debug(`untranslated v2 event: ${t}`);
       }
       return [];
   }
@@ -312,6 +314,37 @@ function contentToText(content: unknown): string {
     .map((c) => c.text as string)
     .join("");
 }
+
+/**
+ * v2 events that are expected and carry nothing the bridge acts on. Kept as a
+ * list (rather than a prefix rule) so a genuinely new *session* event still gets
+ * logged when opencode changes.
+ */
+const BENIGN_V2_EVENTS = new Set([
+  "mcp.status.changed",
+  "mcp.resources.changed",
+  "mcp.tools.changed",
+  "integration.updated",
+  "provider.updated",
+  "model.updated",
+  "vcs.branch.updated",
+  "agent.updated",
+  "command.updated",
+  "skill.updated",
+  "plugin.updated",
+  "websearch.updated",
+  "reference.updated",
+  "session.instructions.updated",
+  "session.inbox.delivered",
+  "session.step.streamed",
+  "session.step.ended",
+  "session.text.started",
+  "session.text.ended",
+  "session.reasoning.started",
+  "session.reasoning.ended",
+  "session.usage.updated",
+  "project.updated",
+]);
 
 /**
  * Probe which API generation a server speaks.
