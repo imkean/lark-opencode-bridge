@@ -35,7 +35,7 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "npm run typecheck && node --import tsx --test test/*.test.ts",
-    "prepare": "npm run build",
+    "prepare": "npm install --include=dev --no-audit --no-fund --silent && npm run build",
     "bridge": "node ./bin/lark-opencode-bridge.mjs",
     "setup": "node ./bin/lark-opencode-bridge.mjs setup",
     "start": "node ./bin/lark-opencode-bridge.mjs run",
