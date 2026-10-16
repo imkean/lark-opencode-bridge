@@ -110,14 +110,17 @@ export class Bridge {
     this.sender = new LarkSender({
       identity: config.larkIdentity,
       larkCliPath: opts.larkCliPath,
+      profile: config.larkProfile,
     });
     this.chats = new LarkChats({
       identity: config.larkIdentity,
       larkCliPath: opts.larkCliPath,
+      profile: config.larkProfile,
     });
     this.attach = new LarkAttachmentFetcher({
       identity: config.larkIdentity,
       larkCliPath: opts.larkCliPath,
+      profile: config.larkProfile,
     });
     this.comments = new CommentFetcher();
     this.server = config.manageOpencodeServer
@@ -163,7 +166,10 @@ export class Bridge {
       `lark credentials: appId=${this.credentials.appId} profile=${this.credentials.profile ?? "(none)"}`,
     );
 
-    this.botOpenId = fetchBotOpenId({ larkCliPath: this.opts.larkCliPath });
+    this.botOpenId = fetchBotOpenId({
+      larkCliPath: this.opts.larkCliPath,
+      profile: this.opts.config.larkProfile,
+    });
     log.info(`bot open_id: ${this.botOpenId ?? "(unknown — group mention detection degraded)"}`);
 
     this.consumer = new LarkWsConsumer({

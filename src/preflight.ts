@@ -13,6 +13,8 @@ export interface PreflightResult {
 export interface PreflightOptions {
   larkCliPath?: string;
   opencodePath?: string;
+  /** lark-cli profile the bridge is configured to use (`config.larkProfile`). */
+  larkProfile?: string;
   /** When true, install `@larksuite/cli@latest` if `lark-cli` is missing. */
   installLarkCli?: boolean;
 }
@@ -33,7 +35,7 @@ export async function runPreflight(opts: PreflightOptions = {}): Promise<Preflig
   });
   if (!lark.ok) {
     issues.push(lark.error ?? "lark-cli not available");
-  } else if (!(await hasLarkAppConfigured())) {
+  } else if (!(await hasLarkAppConfigured(opts.larkProfile))) {
     issues.push(`飞书应用未配置 — 运行 lark-opencode-bridge run 进入扫码向导`);
   }
 

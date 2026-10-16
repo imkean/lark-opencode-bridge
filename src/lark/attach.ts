@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { createLogger } from "../log.js";
 import { MEDIA_DIR } from "../paths.js";
+import { withProfile } from "./cli-args.js";
 
 const log = createLogger("lark.attach");
 
@@ -20,6 +21,8 @@ export interface AttachmentRef {
 export interface AttachmentOptions {
   larkCliPath?: string;
   identity: "bot" | "user";
+  /** lark-cli profile to run as (defaults to the machine's active profile). */
+  profile?: string;
 }
 
 export class LarkAttachmentFetcher {
@@ -87,7 +90,10 @@ export class LarkAttachmentFetcher {
       "--as",
       this.opts.identity,
     ];
-    const out = await run(this.opts.larkCliPath ?? resolveLarkCli(), args);
+    const out = await run(
+      this.opts.larkCliPath ?? resolveLarkCli(),
+      withProfile(this.opts.profile, args),
+    );
     const json = safeJson(out);
     const msg = extractMessage(json);
     if (!msg) {
@@ -124,7 +130,7 @@ export class LarkAttachmentFetcher {
       "--as",
       this.opts.identity,
     ];
-    await run(this.opts.larkCliPath ?? resolveLarkCli(), args, cwd);
+    await run(this.opts.larkCliPath ?? resolveLarkCli(), withProfile(this.opts.profile, args), cwd);
 
     const absPath = path.join(outDir, safeName);
     const stat = await fs.stat(absPath).catch(() => null);

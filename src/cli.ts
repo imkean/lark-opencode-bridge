@@ -191,6 +191,7 @@ export async function runCli(argv: string[]): Promise<void> {
         const pf = await runPreflight({
           larkCliPath: opts.larkCli,
           opencodePath: opts.opencode,
+          larkProfile: cfg.larkProfile,
           installLarkCli: false,
         });
         if (!pf.ok) {
@@ -368,7 +369,11 @@ export async function runCli(argv: string[]): Promise<void> {
     .option("--opencode <path>", "override opencode binary path")
     .action(async (opts) => {
       const cfg = await loadConfig();
-      const pf = await runPreflight({ larkCliPath: opts.larkCli, opencodePath: opts.opencode });
+      const pf = await runPreflight({
+        larkCliPath: opts.larkCli,
+        opencodePath: opts.opencode,
+        larkProfile: cfg.larkProfile,
+      });
       const lark = checkBinary(opts.larkCli ?? resolveLarkCli(), ["--version"]);
       const opencode = checkBinary(opts.opencode ?? "opencode", ["--version"]);
       const authed = checkBinary(opts.larkCli ?? resolveLarkCli(), ["auth", "list"]);

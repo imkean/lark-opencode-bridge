@@ -1,11 +1,14 @@
 import { resolveLarkCli, spawn } from "../process/exec.js";
 import { createLogger } from "../log.js";
+import { withProfile } from "./cli-args.js";
 
 const log = createLogger("lark.send");
 
 export interface SenderOptions {
   identity: "bot" | "user";
   larkCliPath?: string;
+  /** lark-cli profile to run as (defaults to the machine's active profile). */
+  profile?: string;
 }
 
 export interface ReplyOptions {
@@ -115,8 +118,9 @@ export class LarkSender {
 
   private run(args: string[]): Promise<string> {
     const bin = this.opts.larkCliPath ?? resolveLarkCli();
+    const argv = withProfile(this.opts.profile, args);
     return new Promise((resolve, reject) => {
-      const proc = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+      const proc = spawn(bin, argv, { stdio: ["ignore", "pipe", "pipe"] });
       const stdout: Buffer[] = [];
       const stderr: Buffer[] = [];
       proc.stdout.on("data", (c) => stdout.push(c));
