@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { resolveLarkCli, resolveOnPath, spawnSync } from "../process/exec.js";
@@ -78,10 +78,28 @@ export interface ServiceStatus {
   detail: string;
 }
 
+/**
+ * Absolute path of this package's root.
+ *
+ * Walking up to the nearest `package.json` rather than counting `../` levels:
+ * the bundle lives in `dist/`, and a scoped name (`@scope/pkg`) adds a directory
+ * level, so `path.resolve(dist, "../../bin")` resolves to `<node_modules>/@scope/bin`
+ * and the daemon's ExecStart points at a file that does not exist.
+ */
+function packageRoot(): string {
+  let dir = path.dirname(fileURLToPath(import.meta.url));
+  for (let i = 0; i < 6; i++) {
+    if (existsSync(path.join(dir, "package.json"))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.dirname(fileURLToPath(import.meta.url));
+}
+
 function bridgeBin(): string {
   // Resolve the installed CLI entry relative to this package.
-  const here = path.dirname(fileURLToPath(import.meta.url));
-  return path.resolve(here, "../../bin/lark-opencode-bridge.mjs");
+  return path.join(packageRoot(), "bin", "lark-opencode-bridge.mjs");
 }
 
 function nodeBin(): string {
